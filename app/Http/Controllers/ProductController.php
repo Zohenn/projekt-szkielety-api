@@ -39,10 +39,10 @@ class ProductController extends Controller {
         }
 
         $products = $products->paginate(10);
-        if (Auth::user() && Auth::user()->admin) {
-            return view('products.admin', ['products' => $products, 'categories' => Category::all()]);
-        }
-        return view('products.index', ['products' => $products, 'categories' => Category::all()]);
+//        if (Auth::user() && Auth::user()->admin) {
+//            return view('products.admin', ['products' => $products, 'categories' => Category::all()]);
+//        }
+        return $products;
     }
 
     public function add() {

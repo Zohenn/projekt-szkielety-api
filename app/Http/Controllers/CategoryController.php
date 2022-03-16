@@ -11,7 +11,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 class CategoryController extends Controller
 {
     public function index() {
-        return view('categories.index', ['categories' => Category::withExists('products')->orderBy('id')->get()]);
+        return Category::all();
+//        return view('categories.index', ['categories' => Category::withExists('products')->orderBy('id')->get()]);
     }
 
     public function edit(EditCategoryRequest $request, $id) {
