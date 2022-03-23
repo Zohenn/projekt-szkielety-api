@@ -7,7 +7,8 @@ use App\Http\Requests\SaveProductRequest;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class ProductController extends Controller {
     private function processImage($file, $product) {
@@ -43,6 +44,19 @@ class ProductController extends Controller {
 //            return view('products.admin', ['products' => $products, 'categories' => Category::all()]);
 //        }
         return $products;
+    }
+
+    public function show(Request $request, ?int $id = null) {
+        if($id){
+            return Product::findOrFail($id);
+        }
+
+        $ids = $request->query('id');
+        if(!is_array($ids)){
+            throw new BadRequestHttpException();
+        }
+
+        return Product::whereIn('id', $ids)->get();
     }
 
     public function add() {
@@ -81,5 +95,9 @@ class ProductController extends Controller {
 
         $categories = Category::all();
         return view('products.add', ['categories' => $categories, 'product' => $product]);
+    }
+
+    public function unavailable() {
+        return Product::with('category')->where('amount', 0)->limit(5)->get();
     }
 }

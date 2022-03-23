@@ -10,10 +10,10 @@ class AuthController extends Controller
 {
     public function register(Request $request) {
         $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email',
-            'password' => 'required|string',
-            'password_confirmation' => 'same:password'
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+//            'password_confirmation' => 'same:password'
         ]);
 
         return User::create([
@@ -33,7 +33,10 @@ class AuthController extends Controller
 
         if(!$user || !Hash::check($fields['password'], $user->password)){
             return response([
-                'message' => 'Bad creds'
+                'message' => 'Nieprawidłowe dane logowania',
+                'errors' => [
+                    'email' => ['Nieprawidłowe dane lgoowania']
+                ]
             ], 401);
         }
 

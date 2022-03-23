@@ -2,13 +2,12 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SaveOrderRequest extends FormRequest
 {
-    protected $redirectRoute = 'cart.index';
-
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -36,6 +35,8 @@ class SaveOrderRequest extends FormRequest
             'payment_type_id' => 'required|exists:App\Models\PaymentType,id',
             'products' => 'required|array',
             'products.*' => 'exists:App\Models\Product,id',
+            'assembly' => 'required|boolean',
+            'os_installation' => 'required|boolean'
         ];
     }
 

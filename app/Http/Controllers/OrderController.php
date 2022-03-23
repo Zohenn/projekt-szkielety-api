@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class OrderController extends Controller {
@@ -43,11 +44,11 @@ class OrderController extends Controller {
         }
 
         $orders = Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])
-                       ->where('user_id', Auth::user()->id)
+                       ->where('user_id', $request->user()->id)
                        ->orderBy('date', 'desc')
                        ->paginate(5);
 
-        return view('orders.index', ['orders' => $orders]);
+        return $orders;
     }
 
     public function details(Request $request, $id) {
@@ -69,26 +70,30 @@ class OrderController extends Controller {
         return redirect()->route('order.details', ['id' => $id]);
     }
 
-    public function save(SaveOrderRequest $request) {
+    public function create(SaveOrderRequest $request) {
         $data = $request->safe()->all();
         $data['user_id'] = $request->user()->id;
-        $cart = $request->session()->get('cart');
-        $data['assembly'] = $cart['assembly'];
-        $data['os_installation'] = $cart['osInstallation'];
+//        $cart = $request->session()->get('cart');
+//        $data['assembly'] = $cart['assembly'];
+//        $data['os_installation'] = $cart['osInstallation'];
 
         $services = Service::all();
         $products = Product::query()->whereIn('id', $data['products'])->get();
         foreach($products as $product){
             if($product->amount === 0){
-                $request->session()->flash('error', "Produkt $product->name nie jest dostępny na stanie.");
-                return redirect()->route('cart.index');
+//                $request->session()->flash('error', "Produkt $product->name nie jest dostępny na stanie.");
+//                return redirect()->route('cart.index');
+                return response()->json([
+                    'message' => "Produkt $product->name nie jest dostępny na stanie.",
+                ], 422);
             }
         }
         $data['value'] = array_reduce($products->toArray(), function($sum, $product) {
                 return $sum + $product['price'];
             }, 0) + ($data['assembly'] ? $services->find('assembly')->price : 0) + ($data['os_installation'] ? $services->find('os_installation')->price : 0);
 
-        DB::transaction(function() use ($products, $data) {
+        $order = null;
+        DB::transaction(function() use ($products, $data, $order) {
             $order = Order::create($data);
 
             $orderDetails = array_map(function($product) use ($order) {
@@ -103,8 +108,12 @@ class OrderController extends Controller {
             }
         });
 
-        $request->session()->put('cart', Cart::getEmptyCart());
+//        $request->session()->put('cart', Cart::getEmptyCart());
 
-        return redirect()->route('order.index', ['#order-modal']);
+        return response()->json($order, 201);
+    }
+
+    public function last() {
+        return Order::with(['paymentType', 'orderStatus'])->orderBy('date', 'desc')->limit(5)->get();
     }
 }
