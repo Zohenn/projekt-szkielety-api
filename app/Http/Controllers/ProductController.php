@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\EditProductRequest;
+use App\Http\Requests\EditProductImageRequest;
 use App\Http\Requests\SaveProductRequest;
-use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class ProductController extends Controller {
@@ -18,6 +16,10 @@ class ProductController extends Controller {
     }
 
     public function index(Request $request) {
+        if(!is_null($request->query('id'))){
+            return $this->show($request);
+        }
+
         $categoryIds = $request->query('category');
         $availability = $request->query('availability');
         $products = Product::with('category');
@@ -40,9 +42,6 @@ class ProductController extends Controller {
         }
 
         $products = $products->paginate(10);
-//        if (Auth::user() && Auth::user()->admin) {
-//            return view('products.admin', ['products' => $products, 'categories' => Category::all()]);
-//        }
         return $products;
     }
 
@@ -59,42 +58,29 @@ class ProductController extends Controller {
         return Product::whereIn('id', $ids)->get();
     }
 
-    public function add() {
-        $categories = Category::all();
-        return view('products.add', ['categories' => $categories]);
-    }
-
-    public function save(SaveProductRequest $request) {
-        $categories = Category::all();
-
-        $file = $request->file('image');
-
+    public function store(SaveProductRequest $request) {
         $product = Product::create($request->safe()->all());
-        $this->processImage($file, $product);
+        $product->image = '';
         $product->save();
-        $request->session()->flash('success', 'Dodano produkt do bazy');
-        return view('products.add', ['categories' => $categories]);
+        return $product;
     }
 
-    public function edit(Request $request, $id) {
-        $product = Product::findOrFail($id);
-
-        $categories = Category::all();
-        return view('products.add', ['categories' => $categories, 'product' => $product]);
-    }
-
-    public function saveEdit(EditProductRequest $request, $id) {
+    public function update(SaveProductRequest $request, $id) {
         $product = Product::findOrFail($id);
 
         $product->fill($request->safe()->all());
-        if($file = $request->file('image')){
-            $this->processImage($file, $product);
-        }
         $product->save();
-        $request->session()->flash('success', 'Zapisano zmiany');
+        return $product;
+    }
 
-        $categories = Category::all();
-        return view('products.add', ['categories' => $categories, 'product' => $product]);
+    public function editImage(EditProductImageRequest $request, $id) {
+        $product = Product::findOrFail($id);
+
+        $file = $request->file('image');
+        $this->processImage($file, $product);
+        $product->save();
+
+        return response(null, 201);
     }
 
     public function unavailable() {

@@ -13,26 +13,6 @@ class ServiceController extends Controller
         return Service::all();
     }
 
-    public function create()
-    {
-        //
-    }
-
-    public function store(Request $request)
-    {
-        //
-    }
-
-    public function show($id)
-    {
-        //
-    }
-
-    public function edit($id)
-    {
-        //
-    }
-
     public function update(EditServicesRequest $request)
     {
         $services = Service::all();
@@ -44,10 +24,5 @@ class ServiceController extends Controller
         $osInstallation->save();
 
         return response(null, 204);
-    }
-
-    public function destroy($id)
-    {
-        //
     }
 }

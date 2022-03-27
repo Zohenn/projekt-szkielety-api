@@ -2,30 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Middleware\Cart;
+use App\Http\Requests\ChangeOrderStatusRequest;
 use App\Http\Requests\SaveOrderRequest;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\OrderStatus;
-use App\Models\PaymentType;
 use App\Models\Product;
 use App\Models\Service;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class OrderController extends Controller {
     public function index(Request $request) {
-        if (Auth::user()->admin) {
+        if ($request->user()->admin) {
             $orders = Order::with(['paymentType', 'orderStatus']);
-            $orderStatusIds = $request->query('orderStatus');
+            $orderStatusIds = $request->query('order_status');
             if (!empty($orderStatusIds)) {
                 $orders = $orders->whereIn('order_status_id', $orderStatusIds);
             }
-            $paymentTypeIds = $request->query('paymentType');
+            $paymentTypeIds = $request->query('payment_type');
             if (!empty($paymentTypeIds)) {
                 $orders = $orders->whereIn('payment_type_id', $paymentTypeIds);
             }
@@ -40,7 +35,7 @@ class OrderController extends Controller {
             }
 
             $orders = $orders->paginate(20);
-            return view('orders.admin', ['orders' => $orders, 'orderStatuses' => OrderStatus::all(), 'paymentTypes' => PaymentType::all()]);
+            return $orders;
         }
 
         $orders = Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])
@@ -51,38 +46,31 @@ class OrderController extends Controller {
         return $orders;
     }
 
-    public function details(Request $request, $id) {
-        $order = Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])->findOrFail($id);
-
-        $orderStatuses = OrderStatus::query()->where('id', '!=', $order->order_status_id)->get();
-
-        return view('orders.details', ['order' => $order, 'orderStatuses' => $orderStatuses]);
+    public function show(Request $request, $id) {
+        return Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])->findOrFail($id);
     }
 
-    public function changeStatus(Request $request, $id, $status) {
-        $order = Order::findOrFail($id);
+    public function changeStatus(ChangeOrderStatusRequest $request, $id) {
+        $order = Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])->findOrFail($id);
+
+        $status = $request->input('status');
 
         $orderStatus = OrderStatus::findOrFail($status);
 
         $order->orderStatus()->associate($orderStatus);
         $order->save();
 
-        return redirect()->route('order.details', ['id' => $id]);
+        return $order;
     }
 
-    public function create(SaveOrderRequest $request) {
+    public function store(SaveOrderRequest $request) {
         $data = $request->safe()->all();
         $data['user_id'] = $request->user()->id;
-//        $cart = $request->session()->get('cart');
-//        $data['assembly'] = $cart['assembly'];
-//        $data['os_installation'] = $cart['osInstallation'];
 
         $services = Service::all();
         $products = Product::query()->whereIn('id', $data['products'])->get();
         foreach($products as $product){
             if($product->amount === 0){
-//                $request->session()->flash('error', "Produkt $product->name nie jest dostępny na stanie.");
-//                return redirect()->route('cart.index');
                 return response()->json([
                     'message' => "Produkt $product->name nie jest dostępny na stanie.",
                 ], 422);
@@ -107,8 +95,6 @@ class OrderController extends Controller {
                 $product->save();
             }
         });
-
-//        $request->session()->put('cart', Cart::getEmptyCart());
 
         return response()->json($order, 201);
     }

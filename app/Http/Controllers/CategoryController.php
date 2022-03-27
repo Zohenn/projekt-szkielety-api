@@ -2,47 +2,51 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\EditCategoryRequest;
 use App\Http\Requests\SaveCategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class CategoryController extends Controller
 {
-    public function index() {
-        return Category::all();
+    public function index(Request $request) {
+        if($request->query('with_exists')){
+            return Category::withExists('products')->orderBy('id')->get();
+        }
+        return Category::orderBy('id')->get();
 //        return view('categories.index', ['categories' => Category::withExists('products')->orderBy('id')->get()]);
     }
 
-    public function edit(EditCategoryRequest $request, $id) {
+    public function update(SaveCategoryRequest $request, $id) {
         $category = Category::findOrFail($id);
 
-        $category->name = $request->safe()->all()['edit-name'];
+        $category->name = $request->input('name');
         $category->save();
 
-        $request->session()->flash('edit-success', 'Zapisano zmiany');
-
-        return redirect()->route('category.index');
+        return response()->json($category);
     }
 
-    public function save(SaveCategoryRequest $request) {
-        Category::create($request->safe()->all());
-        $request->session()->flash('success', 'Dodano kategorię');
-        return view('categories.index', ['categories' => Category::withExists('products')->orderBy('id')->get()]);
+    public function store(SaveCategoryRequest $request) {
+        $name = $request->input('name');
+        if(!is_null(Category::where('name', '=', $name)->first())){
+            return response()->json([
+                'message' => "Kategoria $name już istnieje."
+            ], 422);
+        }
+        $category = Category::create($request->safe()->all());
+        return $category;
     }
 
-    public function remove(Request $request, $id) {
+    public function destroy(Request $request, $id) {
         $category = Category::withExists('products')->findOrFail($id);
 
         if($category->products_exists){
-            throw new BadRequestHttpException;
+            return response()->json([
+                'message' => 'Nie można usunąć kategorii z przypisanymi produktami'
+            ], 422);
         }
 
         $category->delete();
 
-        $request->session()->flash('edit-success', 'Usunięto kategorię');
-
-        return redirect()->route('category.index');
+        return response(null, 204);
     }
 }
