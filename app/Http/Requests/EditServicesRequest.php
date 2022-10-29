@@ -24,8 +24,11 @@ class EditServicesRequest extends FormRequest
     public function rules()
     {
         return [
-            'assembly' => 'required|numeric|gt:0|max:9999',
-            'os_installation' => 'required|numeric|gt:0|max:9999'
+            'services' => 'required|array',
+            'services.*.id' => 'exists:App\Models\Service,id',
+            'services.*.price' => 'required|numeric|gt:0|max:9999',
+//            'assembly' => 'required|numeric|gt:0|max:9999',
+//            'os_installation' => 'required|numeric|gt:0|max:9999'
         ];
     }
 }

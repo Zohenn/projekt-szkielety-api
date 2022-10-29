@@ -6,6 +6,7 @@ use App\Http\Requests\ChangeOrderStatusRequest;
 use App\Http\Requests\SaveOrderRequest;
 use App\Models\Order;
 use App\Models\OrderDetail;
+use App\Models\OrderService;
 use App\Models\OrderStatus;
 use App\Models\Product;
 use App\Models\Service;
@@ -28,7 +29,7 @@ class OrderController extends Controller {
             $sortOptions = ['date', 'value'];
             $sort = $request->query('sort');
             $sortDir = $request->query('sort_dir') === 'desc' ? 'desc' : 'asc';
-            if(in_array($sort, $sortOptions)){
+            if (in_array($sort, $sortOptions)) {
                 $orders = $orders->orderBy($sort, $sortDir);
             } else {
                 $orders = $orders->orderBy('id', 'desc');
@@ -38,20 +39,32 @@ class OrderController extends Controller {
             return $orders;
         }
 
-        $orders = Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])
-                       ->where('user_id', $request->user()->id)
-                       ->orderBy('date', 'desc')
-                       ->paginate(5);
+        $orders = Order::with([
+            'paymentType',
+            'orderStatus',
+            'details',
+            'details.product',
+            'services',
+            'services.service'
+        ])->where('user_id', $request->user()->id)->orderBy('date', 'desc')->paginate(5);
 
         return $orders;
     }
 
     public function show(Request $request, $id) {
-        return Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])->findOrFail($id);
+        return Order::with(['paymentType', 'orderStatus', 'details', 'details.product', 'services', 'services.service'])
+                    ->findOrFail($id);
     }
 
     public function changeStatus(ChangeOrderStatusRequest $request, $id) {
-        $order = Order::with(['paymentType', 'orderStatus', 'details', 'details.product'])->findOrFail($id);
+        $order = Order::with([
+            'paymentType',
+            'orderStatus',
+            'details',
+            'details.product',
+            'services',
+            'services.service'
+        ])->findOrFail($id);
 
         $status = $request->input('status');
 
@@ -67,10 +80,10 @@ class OrderController extends Controller {
         $data = $request->safe()->all();
         $data['user_id'] = $request->user()->id;
 
-        $services = Service::all();
+        $services = Service::query()->whereIn('id', $data['services'])->get();
         $products = Product::query()->whereIn('id', $data['products'])->get();
-        foreach($products as $product){
-            if($product->amount === 0){
+        foreach ($products as $product) {
+            if ($product->amount === 0) {
                 return response()->json([
                     'message' => "Produkt $product->name nie jest dostępny na stanie.",
                 ], 422);
@@ -78,17 +91,32 @@ class OrderController extends Controller {
         }
         $data['value'] = array_reduce($products->toArray(), function($sum, $product) {
                 return $sum + $product['price'];
-            }, 0) + ($data['assembly'] ? $services->find('assembly')->price : 0) + ($data['os_installation'] ? $services->find('os_installation')->price : 0);
+            }, 0) + array_reduce($services->toArray(), function($sum, $service) {
+                return $sum + $service['price'];
+            }, 0);
 
         $order = null;
-        DB::transaction(function() use ($products, $data, $order) {
+        DB::transaction(function() use ($products, $services, $data, $order) {
             $order = Order::create($data);
 
             $orderDetails = array_map(function($product) use ($order) {
-                return new OrderDetail(['order_id' => $order->id, 'product_id' => $product['id'], 'price' => $product['price']]);
+                return new OrderDetail([
+                    'order_id' => $order->id,
+                    'product_id' => $product['id'],
+                    'price' => $product['price']
+                ]);
             }, $products->toArray());
 
             $order->details()->saveMany($orderDetails);
+
+            $orderServices = array_map(function($service) use ($order) {
+                return new OrderService([
+                    'order_id' => $order['id'],
+                    'service_id' => $service['id'],
+                ]);
+            }, $services->toArray());
+
+            $order->services()->saveMany($orderServices);
 
             foreach ($products as $product) {
                 $product->amount--;

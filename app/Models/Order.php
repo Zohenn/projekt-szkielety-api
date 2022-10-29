@@ -18,8 +18,6 @@ class Order extends Model
         'phone',
         'payment_type_id',
         'value',
-        'assembly',
-        'os_installation',
     ];
 
     protected $dates = ['date'];
@@ -38,5 +36,9 @@ class Order extends Model
 
     public function details() {
         return $this->hasMany(OrderDetail::class);
+    }
+
+    public function services() {
+        return $this->hasMany(OrderService::class);
     }
 }

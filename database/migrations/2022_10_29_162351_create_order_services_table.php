@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateServicesTable extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
@@ -13,10 +13,10 @@ class CreateServicesTable extends Migration
      */
     public function up()
     {
-        Schema::create('services', function (Blueprint $table) {
-            $table->id();
-            $table->string('name', 100);
-            $table->float('price', 6, 2, true);
+        Schema::create('order_services', function (Blueprint $table) {
+            $table->foreignId('order_id')->constrained('orders');
+            $table->foreignId('service_id')->constrained('services');
+            $table->primary(['order_id', 'service_id']);
         });
     }
 
@@ -27,6 +27,6 @@ class CreateServicesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('services');
+        Schema::dropIfExists('order_services');
     }
-}
+};

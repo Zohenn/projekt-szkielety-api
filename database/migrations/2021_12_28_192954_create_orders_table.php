@@ -26,8 +26,6 @@ class CreateOrdersTable extends Migration
             $table->unsignedTinyInteger('payment_type_id');
             $table->foreign('payment_type_id')->references('id')->on('payment_types');
             $table->float('value', 8, 2, true);
-            $table->boolean('assembly');
-            $table->boolean('os_installation');
             $table->datetime('date')->useCurrent();
             $table->unsignedTinyInteger('order_status_id')->default(1);
             $table->foreign('order_status_id')->references('id')->on('order_statuses');

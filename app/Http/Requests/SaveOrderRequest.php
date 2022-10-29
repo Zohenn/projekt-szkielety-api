@@ -35,8 +35,8 @@ class SaveOrderRequest extends FormRequest
             'payment_type_id' => 'required|exists:App\Models\PaymentType,id',
             'products' => 'required|array',
             'products.*' => 'exists:App\Models\Product,id',
-            'assembly' => 'required|boolean',
-            'os_installation' => 'required|boolean'
+            'services' => 'required|array',
+            'services.*' => 'exists:App\Models\Service,id',
         ];
     }
 

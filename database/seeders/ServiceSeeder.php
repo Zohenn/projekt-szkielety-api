@@ -16,12 +16,12 @@ class ServiceSeeder extends Seeder
     {
         DB::table('services')->insert([
             [
-                'id' => 'assembly',
+                'id' => '1',
                 'name' => 'Montaż zestawu',
                 'price' => 80,
             ],
             [
-                'id' => 'osInstallation',
+                'id' => '2',
                 'name' => 'Instalacja systemu',
                 'price' => 50,
             ]
